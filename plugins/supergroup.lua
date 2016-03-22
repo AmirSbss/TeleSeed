@@ -1,4 +1,4 @@
-﻿--Begin supergrpup.lua
+--Begin supergrpup.lua
 --Check members #Add supergroup
 local function check_member_super(cb_extra, success, result)
   local receiver = cb_extra.receiver
@@ -343,6 +343,43 @@ local function unlock_group_rtl(msg, data, target)
   end
 end
 
+local function is_word_allowed(chat_id,text)
+  local var = true
+  local data = load_data(_config.moderation.data)
+  if not data[tostring(chat_id)] then
+      return true
+  end
+  local wordlist = ''
+  if data[tostring(chat_id)]['blocked_words'] then
+    for k,v in pairs(data[tostring(chat_id)]['blocked_words']) do 
+        if string.find(string.lower(text), string.lower(k)) then
+            return false
+        end
+    end
+  end
+  return var
+end
+
+local function block_word(receiver, wordblock)
+    local chat_id = string.gsub(receiver, '.+#id', '')
+    local data = load_data(_config.moderation.data)
+    data[tostring(chat_id)]['blocked_words'][(wordblock)] = true
+    save_data(_config.moderation.data, data)
+    send_large_msg(receiver, 'Word "'..wordblock..'" has been added to blocked list.')
+end
+
+local function unblock_word(receiver, wordblock)
+    local chat_id = string.gsub(receiver, '.+#id', '')
+    local data = load_data(_config.moderation.data)
+    if data[tostring(chat_id)]['blocked_words'][wordblock] then
+        data[tostring(chat_id)]['blocked_words'][(wordblock)] = nil
+        save_data(_config.moderation.data, data)
+        send_large_msg(receiver, 'Word "'..wordblock..'" has been removed from blocked list.')
+    else
+        send_large_msg(receiver, 'Word "'..wordblock..'" isn\'t in blocked list.')
+    end
+end
+
 local function lock_group_sticker(msg, data, target)
   if not is_momod(msg) then
     return
@@ -521,7 +558,11 @@ function show_supergroup_settingsmod(msg, target)
 		end
 	end
   local settings = data[tostring(target)]['settings']
-  local text = "SuperGroup settings:\nLock links : "..settings.lock_link.."\nLock flood: "..settings.flood.."\nFlood sensitivity : "..NUM_MSG_MAX.."\nLock spam: "..settings.lock_spam.."\nLock Arabic: "..settings.lock_arabic.."\nLock Member: "..settings.lock_member.."\nLock RTL: "..settings.lock_rtl.."\nLock sticker: "..settings.lock_sticker.."\nPublic: "..settings.public.."\nStrict settings: "..settings.strict
+  local wordlist = ''
+  for k,v in pairs(data[tostring(msg.to.id)]['blocked_words']) do
+      wordlist = wordlist..' / '..k
+  end
+  local text = "SuperGroup settings:\nLock links : "..settings.lock_link.."\nLock flood: "..settings.flood.."\nFlood sensitivity : "..NUM_MSG_MAX.."\nLock spam: "..settings.lock_spam.."\nLock Arabic: "..settings.lock_arabic.."\nLock Member: "..settings.lock_member.."\nLock RTL: "..settings.lock_rtl.."\nLock sticker: "..settings.lock_sticker.."\nPublic: "..settings.public.."\nStrict settings: "..settings.strict.."\n\nBlocked words : "..wordlist
   return text
 end
 
@@ -1594,6 +1635,18 @@ local function run(msg, matches)
 			end
 		end
 
+		if matches[1] == 'filter' and matches[2] then
+                if not is_momod(msg) then
+                    return "For moderators only!"
+                end
+                return block_word(receiver, matches[2])
+            end
+        if matches[1] == 'unfilter' and matches[2] then
+                if not is_momod(msg) then
+                    return "For moderators only!"
+                end
+                return unblock_word(receiver, matches[2])
+            end
 		if matches[1] == 'lock' and is_momod(msg) then
 			local target = msg.to.id
 			if matches[2] == 'links' then
@@ -2019,10 +2072,12 @@ return {
 	"^[#!/]([Cc]lean) (.*)$",
 	"^[#!/]([Hh]elp)$",
 	"^[#!/]([Mm]uteslist)$",
+	"^[#!/]([Ff]ilter) (.+)$",
+        "^[#!/]([Uu]nfilter) (.+)$",
 	"^[#!/]([Mm]utelist)$",
-    "[#!/](mp) (.*)",
+        "[#!/](mp) (.*)",
 	"[#!/](md) (.*)",
-    "^(https://telegram.me/joinchat/%S+)$",
+        "^(https://telegram.me/joinchat/%S+)$",
 	"msg.to.peer_id",
 	"%[(document)%]",
 	"%[(photo)%]",
