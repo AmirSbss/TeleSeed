@@ -147,6 +147,18 @@ if is_chat_msg(msg) or is_super_group(msg) then
 							kick_user(msg.from.id, msg.to.id)
 						end
 					end
+				if is_word_allowed(msg.to.id, msg.text) then
+                    print('word allowed')
+                else
+                    print('word is not allowed')
+                if not is_momod(msg) then
+                    delete_msg(msg.id, ok_cb, false)
+                    return 'That word is not allowed'
+					if strict == "yes" or to_chat then
+						kick_user(msg.from.id, msg.to.id)
+                    end
+                end
+				end
 				local is_username_caption = msg.media.caption:match("^@[%a%d]")
 				if is_username_caption and lock_link == "yes" then
 					delete_msg(msg.id, ok_cb, false)
